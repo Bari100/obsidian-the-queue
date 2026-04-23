@@ -1,26 +1,25 @@
-import { QueueNoteData, QueueNoteStage, QueueNoteTemplate } from "src/types";
+import type { QueueNoteData } from 'src/types'
+import { QueueNoteStage, QueueNoteTemplate } from 'src/types'
 
 const streakStartPercentage = 0.4
-
 
 export class StreakManager {
     currentStreakTemplate: QueueNoteTemplate | null
     streakOngoing = false
     streakCounter = 0
 
-    public onNoteWasPicked(noteData: QueueNoteData) {
+    onNoteWasPicked(noteData: QueueNoteData) {
         if (this.incomingNoteDataIsValidForStreak(noteData)) {
-            if (this.streakOngoing) {
-                this.iterateStreak()
-            } else {
-                if (this.streakShouldBeStarted()) this.startStreak(noteData.template)
-            }
-        } else {
-            if (this.streakOngoing) this.resetStreak()
+            if (this.streakOngoing) this.iterateStreak()
+            else if (this.streakShouldBeStarted()) this.startStreak(noteData.template)
+
+            return
         }
+
+        if (this.streakOngoing) this.resetStreak()
     }
 
-    public getCurrentStreakTemplate(): QueueNoteTemplate | null {
+    getCurrentStreakTemplate(): QueueNoteTemplate | null {
         return this.currentStreakTemplate
     }
 
@@ -43,8 +42,11 @@ export class StreakManager {
         // streaks work with (ongoing) learn items, and checks
         // the _ongoing_ part means the streak breaks when we're hitting new learn cards
         // preventing streak after streak of introducing new learn cards
-        return (noteData.template == QueueNoteTemplate.Learn && noteData.stage === QueueNoteStage.Ongoing)
-            || noteData.template == QueueNoteTemplate.Check
+        return (
+            (noteData.template == QueueNoteTemplate.Learn &&
+                noteData.stage === QueueNoteStage.Ongoing) ||
+            noteData.template == QueueNoteTemplate.Check
+        )
     }
 
     private iterateStreak() {

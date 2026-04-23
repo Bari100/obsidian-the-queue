@@ -1,29 +1,26 @@
-import { QueueMediator } from "./QueueMediator"
-import { QueueNote } from "../models/QueueNote"
-import { QueueNoteStage, QueueNoteTemplate } from "src/types"
-import { getAllMdFiles } from "src/helpers/vaultUtils"
-import { getRandomInt, pickRandom } from "src/helpers/arrayUtils"
-import { StreakManager } from "./StreakManager"
-import { QueueNoteFactory } from "src/models/NoteFactory"
-import { getPluginContext } from "src/contexts/pluginContext"
-import { TFile } from "obsidian"
-import { StatsManager } from "./StatsManager"
+import { TFile } from 'obsidian'
+import { getPluginContext } from 'src/contexts/pluginContext'
+import { getRandomInt, pickRandom } from 'src/helpers/arrayUtils'
+import { getAllMdFiles } from 'src/helpers/vaultUtils'
+import { QueueNoteFactory } from 'src/models/NoteFactory'
+import { QueueNoteStage, QueueNoteTemplate } from 'src/types'
+
+import type { QueueNote } from '../models/QueueNote'
+import { StatsManager } from './StatsManager'
+import { StreakManager } from './StreakManager'
 
 // knows the notes
 // when asked, produces a random note (probably to open it)
 export class NoteShuffler {
     private readonly MAX_DUE_LEARNS_BEFORE_EXCLUDING_NEW = 20
-    private readonly MAX_ACTIVE_LONGMEDIA_BEFORE_EXCLUDING_NEW = 5
+    private readonly MAX_ACTIVE_LONG_MEDIA_BEFORE_EXCLUDING_NEW = 5
 
-    mediator: QueueMediator
     notes: QueueNote[] = []
     streakManager: StreakManager
     notesCurrentlyLoading = false
     lastPickedNote: QueueNote | null = null
 
-    constructor(mediator: QueueMediator) {
-        this.mediator = mediator
-        mediator.noteShuffler = this
+    constructor() {
         this.streakManager = new StreakManager()
 
         const context = getPluginContext()
@@ -33,52 +30,50 @@ export class NoteShuffler {
         // compare that to this.notes, and adapt the note in notes
         // otherwise, any kind of write, whether scoring in other parts of the plugin
         // nor user edits would have an effect until plugin/obs restart
-        context.plugin.registerEvent(context.app.vault.on('modify', async (file) => {
-            if (this.notes.length > 0 && file instanceof TFile && file.extension === 'md') {
-                const noteFromFile = await QueueNoteFactory.createNoteFromFile(file)
-                const index = this.notes.findIndex((note) => noteFromFile.file === note.file)
-                if (index !== -1) {
-                    this.notes[index] = noteFromFile
+        context.plugin.registerEvent(
+            context.app.vault.on('modify', async (file) => {
+                if (this.notes.length > 0 && file instanceof TFile && file.extension === 'md') {
+                    const noteFromFile = QueueNoteFactory.createNoteFromFile(file)
+                    const index = this.notes.findIndex((note) => noteFromFile.file === note.file)
+                    if (index !== -1) {
+                        this.notes[index] = noteFromFile
+                    }
                 }
-            }
-        })
+            }),
         )
     }
 
-    public async getDueNote(): Promise<QueueNote | null> {
+    getDueNote(): QueueNote | null {
         let note: QueueNote | null
         if (this.notes.length > 0) {
             note = this.getDueNoteFromAllNotes()
         } else {
-            note = await this.getDueNoteQuickly()
+            note = this.getDueNoteQuickly()
         }
         if (note) this.streakManager.onNoteWasPicked(note.qData)
         this.lastPickedNote = note
         return note
     }
 
-    public requestLoadingNotes() {
+    requestLoadingNotes() {
         if (!this.notesCurrentlyLoading) {
             this.notesCurrentlyLoading = true
             this.loadNotes()
         }
     }
 
-    private async loadNotes() {
-        const allFiles = getAllMdFiles();
-        try {
-            const notes: QueueNote[] = []
-            for (const file of allFiles) {
-                const note = await QueueNoteFactory.createNoteFromFile(file)
-                if (note && note.qData.template !== QueueNoteTemplate.Exclude) {
-                    notes.push(note)
-                }
+    private loadNotes() {
+        const allFiles = getAllMdFiles()
+        const notes: QueueNote[] = []
+        for (const file of allFiles) {
+            const note = QueueNoteFactory.createNoteFromFile(file)
+            if (note && note.qData.template !== QueueNoteTemplate.Exclude) {
+                notes.push(note)
             }
-            this.notes = notes
-            StatsManager.logDueStats(this.notes)
-        } catch (error) {
-            console.error('Error loading notes:', error);
         }
+        this.notes = notes
+        StatsManager.logDueStats(this.notes)
+
         this.notesCurrentlyLoading = false
     }
 
@@ -86,8 +81,13 @@ export class NoteShuffler {
         const templateToPick = this.getRandomTemplateToPick()
         const notesToPickFrom = this.decideWhichNotesToPickFrom()
 
-        const simplyAllDueNotes = notesToPickFrom.filter(note => note.isDue() && note !== this.lastPickedNote)
-        const notesWithDesiredTemplate = this.filterForNotesWithTemplate(simplyAllDueNotes, templateToPick)
+        const simplyAllDueNotes = notesToPickFrom.filter(
+            (note) => note.isDue() && note !== this.lastPickedNote,
+        )
+        const notesWithDesiredTemplate = this.filterForNotesWithTemplate(
+            simplyAllDueNotes,
+            templateToPick,
+        )
 
         // return a note with desired template, if we have none, return any due note
         // TODO: if we have none at all, also allow just any misc
@@ -100,40 +100,56 @@ export class NoteShuffler {
 
     // this function is necessary and complicated to treat finished media (e.g. articles you have read as a misc note)
     // otherwise, queue is spammed with finished articles and books, which show up MUCH more often than deserved
-    private filterForNotesWithTemplate(notes: QueueNote[], template: QueueNoteTemplate): QueueNote[] {
+    private filterForNotesWithTemplate(
+        notes: QueueNote[],
+        template: QueueNoteTemplate,
+    ): QueueNote[] {
         if (template === QueueNoteTemplate.Misc) {
-            let filteredNotes = notes.filter(note => note.qData.template === QueueNoteTemplate.Misc ||
-                (note.qData.template === QueueNoteTemplate.LongMedia && note.qData.stage === QueueNoteStage.Finished) ||
-                (note.qData.template === QueueNoteTemplate.ShortMedia && note.qData.stage === QueueNoteStage.Finished)
-            )
-            return filteredNotes
-        }
-        else if (template === QueueNoteTemplate.ShortMedia) {
-            return notes.filter(note =>
-                (note.qData.template === QueueNoteTemplate.ShortMedia && note.qData.stage !== QueueNoteStage.Finished)
+            return notes.filter(
+                (note) =>
+                    note.qData.template === QueueNoteTemplate.Misc ||
+                    (note.qData.template === QueueNoteTemplate.LongMedia &&
+                        note.qData.stage === QueueNoteStage.Finished) ||
+                    (note.qData.template === QueueNoteTemplate.ShortMedia &&
+                        note.qData.stage === QueueNoteStage.Finished),
             )
         }
-        else if (template === QueueNoteTemplate.LongMedia) {
-            return notes.filter(note =>
-                (note.qData.template === QueueNoteTemplate.LongMedia && note.qData.stage !== QueueNoteStage.Finished)
+
+        if (template === QueueNoteTemplate.ShortMedia) {
+            return notes.filter(
+                (note) =>
+                    note.qData.template === QueueNoteTemplate.ShortMedia &&
+                    note.qData.stage !== QueueNoteStage.Finished,
+            )
+        }
+
+        if (template === QueueNoteTemplate.LongMedia) {
+            return notes.filter(
+                (note) =>
+                    note.qData.template === QueueNoteTemplate.LongMedia &&
+                    note.qData.stage !== QueueNoteStage.Finished,
             )
         }
 
         // all other cases are the simple base case, where complexity was caught in the isDue
-        else {
-            const filteredNotes = notes.filter(note =>
-                note.qData.template === template
-            )
-            return filteredNotes
-        }
+        return notes.filter((note) => note.qData.template === template)
     }
 
-
     private getRandomTemplateToPick(): QueueNoteTemplate {
-        const noteTemplates = [QueueNoteTemplate.Learn, QueueNoteTemplate.Todo, QueueNoteTemplate.Habit, QueueNoteTemplate.Habit, QueueNoteTemplate.Check, QueueNoteTemplate.ShortMedia, QueueNoteTemplate.LongMedia, QueueNoteTemplate.Misc]
+        const noteTemplates = [
+            QueueNoteTemplate.Learn,
+            QueueNoteTemplate.Todo,
+            QueueNoteTemplate.Habit,
+            QueueNoteTemplate.Habit,
+            QueueNoteTemplate.Check,
+            QueueNoteTemplate.ShortMedia,
+            QueueNoteTemplate.LongMedia,
+            QueueNoteTemplate.Misc,
+        ]
 
         let templateFromStreak = this.streakManager.getCurrentStreakTemplate()
         if (templateFromStreak === null || templateFromStreak === undefined) {
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             return pickRandom(noteTemplates)!
         } else {
             return templateFromStreak
@@ -143,33 +159,58 @@ export class NoteShuffler {
     private decideWhichNotesToPickFrom(): QueueNote[] {
         // filters after deciding whether to filter out new learns (if we have a lot of learns already); and same with longmedia
         return this.getFilteredNotes(this.notes)
-        // this is wrapped in another function to isolate the side effect (gettin the external this.notes state)
+        // this is wrapped in another function to isolate the side effect (getting the external this.notes state)
     }
 
     private getFilteredNotes(notes: QueueNote[]): QueueNote[] {
-        const ongoingLearns = notes.filter(note => note.qData.template === QueueNoteTemplate.Learn && note.qData.stage === QueueNoteStage.Ongoing)
-        const nrDueLearns = ongoingLearns.filter(note => note.isDue()).length
-        const exludeUnstartedLearns = nrDueLearns > this.MAX_DUE_LEARNS_BEFORE_EXCLUDING_NEW
+        const ongoingLearns = notes.filter(
+            (note) =>
+                note.qData.template === QueueNoteTemplate.Learn &&
+                note.qData.stage === QueueNoteStage.Ongoing,
+        )
+        const nrDueLearns = ongoingLearns.filter((note) => note.isDue()).length
+        const excludeUnstartedLearns = nrDueLearns > this.MAX_DUE_LEARNS_BEFORE_EXCLUDING_NEW
 
-        const nrActiveLongMedia = notes.filter(note => note.qData.template === QueueNoteTemplate.LongMedia && note.qData.stage === QueueNoteStage.Ongoing).length
-        const exludeUnstartedLongMedia = nrActiveLongMedia > this.MAX_ACTIVE_LONGMEDIA_BEFORE_EXCLUDING_NEW
-        if (exludeUnstartedLearns) notes = notes.filter(note => !(note.qData.template === QueueNoteTemplate.Learn && note.qData.stage === QueueNoteStage.Unstarted))
-        if (exludeUnstartedLongMedia) notes = notes.filter(note => !(note.qData.template === QueueNoteTemplate.LongMedia && note.qData.stage === QueueNoteStage.Unstarted))
+        const nrActiveLongMedia = notes.filter(
+            (note) =>
+                note.qData.template === QueueNoteTemplate.LongMedia &&
+                note.qData.stage === QueueNoteStage.Ongoing,
+        ).length
+        const excludeUnstartedLongMedia =
+            nrActiveLongMedia > this.MAX_ACTIVE_LONG_MEDIA_BEFORE_EXCLUDING_NEW
+        if (excludeUnstartedLearns)
+            notes = notes.filter(
+                (note) =>
+                    !(
+                        note.qData.template === QueueNoteTemplate.Learn &&
+                        note.qData.stage === QueueNoteStage.Unstarted
+                    ),
+            )
+        if (excludeUnstartedLongMedia)
+            notes = notes.filter(
+                (note) =>
+                    !(
+                        note.qData.template === QueueNoteTemplate.LongMedia &&
+                        note.qData.stage === QueueNoteStage.Unstarted
+                    ),
+            )
 
         return notes
     }
 
-    private async getDueNoteQuickly(): Promise<QueueNote | null> {
+    private getDueNoteQuickly(): QueueNote | null {
         let dueNote: QueueNote | null = null
 
         // the following is a bit cheese, but it ensures that we randomly get due files
         // from the whole vault, not always from the same part of the file list
-        const allFiles = getAllMdFiles();
+        const allFiles = getAllMdFiles()
         const randomStartingIndex = getRandomInt(0, allFiles.length - 1)
-        const allFilesFromStartingIndexAndAddedToTheEndAgain = allFiles.slice(randomStartingIndex).concat(allFiles)
+        const allFilesFromStartingIndexAndAddedToTheEndAgain = allFiles
+            .slice(randomStartingIndex)
+            .concat(allFiles)
 
         for (const file of allFilesFromStartingIndexAndAddedToTheEndAgain) {
-            const note = await QueueNoteFactory.createNoteFromFile(file)
+            const note = QueueNoteFactory.createNoteFromFile(file)
             if (note) {
                 dueNote = note
                 break
@@ -177,6 +218,4 @@ export class NoteShuffler {
         }
         return dueNote
     }
-
 }
-

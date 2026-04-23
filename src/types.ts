@@ -1,4 +1,3 @@
-
 export enum QueueNoteTemplate {
     Learn,
     Todo,
@@ -7,7 +6,7 @@ export enum QueueNoteTemplate {
     ShortMedia,
     LongMedia,
     Misc,
-    Exclude
+    Exclude,
 }
 
 export enum QueueNoteStage {
@@ -15,7 +14,6 @@ export enum QueueNoteStage {
     Ongoing,
     Finished,
 }
-
 
 export type QueueNoteData = {
     template: QueueNoteTemplate
@@ -36,25 +34,25 @@ export type QueueNoteData = {
 }
 
 export enum QueueButton {
-    Wrong = "Wrong",
-    Hard = "Hard",
-    Correct = "Correct",
-    Easy = "Easy",
-    RegisterRep = "Register repetition",
-    RegisterProg = "Mark progress",
-    RegisterDone = "Mark as done",
-    NotToday = "Not today",
-    Later = "Later",
-    Done = "Done",
-    Finished = "Finished",
-    ShowNext = "Show next",
-    SeemsHard = "Seems hard",
+    Wrong = 'Wrong',
+    Hard = 'Hard',
+    Correct = 'Correct',
+    Easy = 'Easy',
+    RegisterRep = 'Register repetition',
+    RegisterProg = 'Mark progress',
+    RegisterDone = 'Mark as done',
+    NotToday = 'Not today',
+    Later = 'Later',
+    Done = 'Done',
+    Finished = 'Finished',
+    ShowNext = 'Show next',
+    SeemsHard = 'Seems hard',
     SeemsMedium = "I'll try to remember",
-    SeemsEasy = "Easy, got it",
-    CheckNo = "No",
-    CheckKindOf = "Kind of",
-    CheckYes = "Yes",
-    MadeProgress = "Made progress",
-    StartLearning = "Start learning",
-    Started = "Started"
+    SeemsEasy = 'Easy, got it',
+    CheckNo = 'No',
+    CheckKindOf = 'Kind of',
+    CheckYes = 'Yes',
+    MadeProgress = 'Made progress',
+    StartLearning = 'Start learning',
+    Started = 'Started',
 }

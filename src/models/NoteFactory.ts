@@ -1,34 +1,36 @@
-import { QueueNoteData, QueueNoteTemplate } from "src/types";
-import { QueueNote } from "./QueueNote";
-import { TFile } from "obsidian";
-import { getFrontmatterOfFile } from "src/helpers/vaultUtils";
-import { getNoteDataFromFrontmatter, getNoteDataFromFrontmatterWithLegacyParadigm } from "src/helpers/frontmatterReaders";
+import type { TFile } from 'obsidian'
+import {
+    getNoteDataFromFrontmatter,
+    getNoteDataFromFrontmatterWithLegacyParadigm,
+} from 'src/helpers/frontmatterReaders'
+import { getFrontmatterOfFile } from 'src/helpers/vaultUtils'
+import type { QueueNoteData } from 'src/types'
+import { QueueNoteTemplate } from 'src/types'
 
-import { QueueNoteMisc } from "./QueueNoteMisc"
-import { QueueNoteHabit } from "./QueueNoteHabit"
-import { QueueNoteLearn } from "./QueueNoteLearn"
-import { QueueNoteTodo } from "./QueueNoteTodo"
-import { QueueNoteCheck } from "./QueueNoteCheck"
-import { QueueNoteShortMedia } from "./QueueNoteShortMedia"
-import { QueueNoteLongMedia } from "./QueueNoteLongMedia"
-import { QueueNoteExclude } from "./QueueNoteExclude"
-
+import type { QueueNote } from './QueueNote'
+import { QueueNoteCheck } from './QueueNoteCheck'
+import { QueueNoteExclude } from './QueueNoteExclude'
+import { QueueNoteHabit } from './QueueNoteHabit'
+import { QueueNoteLearn } from './QueueNoteLearn'
+import { QueueNoteLongMedia } from './QueueNoteLongMedia'
+import { QueueNoteMisc } from './QueueNoteMisc'
+import { QueueNoteShortMedia } from './QueueNoteShortMedia'
+import { QueueNoteTodo } from './QueueNoteTodo'
 
 export class QueueNoteFactory {
-
     // these functions _could_ be unified into one, as in the wild we're not ever going to create
     // a QueueNote except by loading in a TFile and reading its frontmatter
     // however this separation makes it easier to unit test
     // createNoteFromFile() does the rather dirty logic of reading in frontmatter with old and new paradigm
     // and create() approaches something like an actual factory
-    public static async createNoteFromFile(file: TFile): Promise<QueueNote> {
-        const frontmatter = await getFrontmatterOfFile(file)
+    public static createNoteFromFile(file: TFile): QueueNote {
+        const frontmatter = getFrontmatterOfFile(file)
         let qData: QueueNoteData
 
         if (!frontmatter) {
             // No frontmatter, treat as misc note
             qData = { template: QueueNoteTemplate.Misc }
-        } else if (frontmatter["q"]) {
+        } else if (frontmatter['q']) {
             // New paradigm
             qData = getNoteDataFromFrontmatter(frontmatter)
         } else {
@@ -36,28 +38,19 @@ export class QueueNoteFactory {
             qData = getNoteDataFromFrontmatterWithLegacyParadigm(frontmatter)
         }
 
-        const note = this.create(file, qData)
-        return note
+        return this.create(file, qData)
     }
 
     public static create(file: TFile, qData: QueueNoteData): QueueNote {
-        switch (qData.template) {
-            case QueueNoteTemplate.Habit:
-                return new QueueNoteHabit(file, qData)
-            case QueueNoteTemplate.Learn:
-                return new QueueNoteLearn(file, qData)
-            case QueueNoteTemplate.Todo:
-                return new QueueNoteTodo(file, qData)
-            case QueueNoteTemplate.Check:
-                return new QueueNoteCheck(file, qData)
-            case QueueNoteTemplate.ShortMedia:
-                return new QueueNoteShortMedia(file, qData)
-            case QueueNoteTemplate.LongMedia:
-                return new QueueNoteLongMedia(file, qData)
-            case QueueNoteTemplate.Exclude:
-                return new QueueNoteExclude(file, qData)
-            case QueueNoteTemplate.Misc:
-                return new QueueNoteMisc(file, qData)
-        }
+        return {
+            [QueueNoteTemplate.Habit]: new QueueNoteHabit(file, qData),
+            [QueueNoteTemplate.Learn]: new QueueNoteLearn(file, qData),
+            [QueueNoteTemplate.Todo]: new QueueNoteTodo(file, qData),
+            [QueueNoteTemplate.Check]: new QueueNoteCheck(file, qData),
+            [QueueNoteTemplate.ShortMedia]: new QueueNoteShortMedia(file, qData),
+            [QueueNoteTemplate.LongMedia]: new QueueNoteLongMedia(file, qData),
+            [QueueNoteTemplate.Exclude]: new QueueNoteExclude(file, qData),
+            [QueueNoteTemplate.Misc]: new QueueNoteMisc(file, qData),
+        }[qData.template]
     }
 }

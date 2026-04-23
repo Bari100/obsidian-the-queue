@@ -1,13 +1,13 @@
-import { Plugin } from 'obsidian';
-import { QueueBar } from './controllers/QueueBar';
-import { NoteShuffler } from './controllers/NoteShuffler';
-import { ActiveNoteManager } from './controllers/ActiveNoteManager';
-import { setQueuePluginContext } from './contexts/pluginContext';
-import { QueueMediator } from './controllers/QueueMediator';
+import { Plugin } from 'obsidian'
+
+import { setQueuePluginContext } from './contexts/pluginContext'
+import { ActiveNoteManager } from './controllers/ActiveNoteManager'
+import { NoteShuffler } from './controllers/NoteShuffler'
+import { QueueBar } from './controllers/QueueBar'
+import { QueueMediator } from './controllers/QueueMediator'
 
 // acts as Mediator for main components
 export default class QueuePlugin extends Plugin {
-
     queueBar: QueueBar
 
     async onload() {
@@ -15,16 +15,20 @@ export default class QueuePlugin extends Plugin {
         const mediator = new QueueMediator()
 
         this.queueBar = new QueueBar(this.app.workspace.containerEl, mediator)
-        new NoteShuffler(mediator)
-        new ActiveNoteManager(mediator)
+        const noteShuffler = new NoteShuffler()
+        const activeNoteManager = new ActiveNoteManager(mediator)
 
-        this.addRibbonIcon('square-square', 'Toggle Queue', (evt: MouseEvent) => {
+        mediator.queueBar = this.queueBar
+        mediator.noteShuffler = noteShuffler
+        mediator.activeNoteManager = activeNoteManager
+
+        this.addRibbonIcon('square-square', 'Toggle Queue', () => {
             // the toggle is held here b/c it's basically the core way of
             // interacting with the plugin itself,
             // however the logic is first handled by the QueueBar visually
-            // and than passed to the mediator
+            // and then passed to the mediator
             this.queueBar.toggle()
-        });
+        })
     }
 
     unload() {

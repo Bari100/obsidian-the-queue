@@ -1,13 +1,13 @@
-import { QueueButton } from "src/types";
-import { QueueNote } from "./QueueNote";
-import { dateInNrOfDaysAt3Am, dateTenMinutesFromNow, dateTomorrow3Am } from "src/helpers/dateUtils";
+import { dateInNrOfDaysAt3Am, dateTenMinutesFromNow, dateTomorrow3Am } from 'src/helpers/dateUtils'
+import { QueueButton } from 'src/types'
+
+import { QueueNote } from './QueueNote'
 
 export class QueueNoteHabit extends QueueNote {
-
     buttonsWhenDue: QueueButton[] = [QueueButton.NotToday, QueueButton.Later, QueueButton.Done]
     buttonsWhenNotDue: QueueButton[] = [QueueButton.RegisterDone, QueueButton.ShowNext]
 
-    public score(btn: QueueButton) {
+    score(btn: QueueButton) {
         switch (btn) {
             case QueueButton.NotToday:
                 this.qData.due = dateTomorrow3Am()

@@ -1,12 +1,19 @@
-import { QueueButton, QueueNoteStage } from "src/types";
-import { QueueNote } from "./QueueNote";
-import { dateTenMinutesFromNow, dateTomorrow3Am } from "src/helpers/dateUtils";
-import { Card, createEmptyCard, FSRS, FSRSParameters, generatorParameters, Rating, RecordLog, RecordLogItem, State } from "ts-fsrs"
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+import { dateTenMinutesFromNow, dateTomorrow3Am } from 'src/helpers/dateUtils'
+import { QueueButton, QueueNoteStage } from 'src/types'
+import type { Card, FSRSParameters, RecordLog, RecordLogItem } from 'ts-fsrs'
+import { createEmptyCard, FSRS, generatorParameters, Rating, State } from 'ts-fsrs'
+
+import { QueueNote } from './QueueNote'
 
 export class QueueNoteLearn extends QueueNote {
-
     buttonsWhenUnstarted: QueueButton[] = [QueueButton.StartLearning, QueueButton.NotToday]
-    buttonsWhenDue: QueueButton[] = [QueueButton.Wrong, QueueButton.Hard, QueueButton.Correct, QueueButton.Easy]
+    buttonsWhenDue: QueueButton[] = [
+        QueueButton.Wrong,
+        QueueButton.Hard,
+        QueueButton.Correct,
+        QueueButton.Easy,
+    ]
     buttonsWhenNotDue: QueueButton[] = [QueueButton.RegisterRep, QueueButton.ShowNext]
 
     public score(btn: QueueButton) {
@@ -52,7 +59,6 @@ export class QueueNoteLearn extends QueueNote {
         }
     }
 
-
     private setQDataAtStartOfFSRS() {
         this.qData.stage = QueueNoteStage.Ongoing
         const card: Card = createEmptyCard()
@@ -68,9 +74,7 @@ export class QueueNoteLearn extends QueueNote {
         this.qData.seen = new Date()
     }
 
-
     private adaptAccordingToFSRS(btn: QueueButton) {
-
         if (!this.hasAllPropsSetNeededForFSRS()) {
             console.warn('cannot interpret learning data, treating as new learn note')
             this.setQDataAtStartOfFSRS()
@@ -91,7 +95,6 @@ export class QueueNoteLearn extends QueueNote {
                 break
         }
 
-
         let fsrsCard: Card = {
             due: this.qData.due!,
             stability: this.qData.stability!,
@@ -102,11 +105,11 @@ export class QueueNoteLearn extends QueueNote {
             reps: this.qData.reps!,
             lapses: this.qData.lapses!,
             state: cardState,
-            last_review: this.qData.seen
+            last_review: this.qData.seen,
         }
 
-        const params: FSRSParameters = generatorParameters({ maximum_interval: 1000 });
-        const f = new FSRS(params);
+        const params: FSRSParameters = generatorParameters({ maximum_interval: 1000 })
+        const f = new FSRS(params)
         const schedule_options: RecordLog = f.repeat(fsrsCard, new Date())
 
         let relevantLog: RecordLogItem
@@ -137,22 +140,19 @@ export class QueueNoteLearn extends QueueNote {
         this.qData.seen = relevantLog.card.last_review
 
         this.qData.stage = QueueNoteStage.Ongoing
-
     }
 
     private hasAllPropsSetNeededForFSRS(): boolean {
         const allPropsSet =
-            this.qData.due !== undefined
-            && this.qData.stability !== undefined
-            && this.qData.difficulty !== undefined
-            && this.qData.elapsed !== undefined
-            && this.qData.scheduled !== undefined
-            && this.qData.reps !== undefined
-            && this.qData.lapses !== undefined
-            && this.qData.state !== undefined
+            this.qData.due !== undefined &&
+            this.qData.stability !== undefined &&
+            this.qData.difficulty !== undefined &&
+            this.qData.elapsed !== undefined &&
+            this.qData.scheduled !== undefined &&
+            this.qData.reps !== undefined &&
+            this.qData.lapses !== undefined &&
+            this.qData.state !== undefined
 
         return allPropsSet
-
     }
-
 }

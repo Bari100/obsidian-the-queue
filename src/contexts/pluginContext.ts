@@ -1,24 +1,23 @@
-import { App } from "obsidian";
-import QueuePlugin from "src/main";
-
+import type { App } from 'obsidian'
+import type QueuePlugin from 'src/main'
 
 export interface QueuePluginContext {
-    app: App;
-    plugin: QueuePlugin;
+    app: App
+    plugin: QueuePlugin
 }
 
-let context: QueuePluginContext;
+let context: QueuePluginContext
 
 export function setQueuePluginContext(plugin: QueuePlugin): void {
     context = {
         app: plugin.app,
-        plugin: plugin
+        plugin: plugin,
     }
 }
 
 export function getPluginContext(): QueuePluginContext {
     if (!context) {
-        throw new Error("Plugin context not set")
+        throw new Error('Plugin context not set')
     }
     return context
 }
