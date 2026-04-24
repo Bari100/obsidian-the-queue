@@ -5,8 +5,8 @@ import { getAllMdFiles } from 'src/helpers/vaultUtils'
 import { QueueNoteFactory } from 'src/models/NoteFactory'
 import { QueueNoteStage, QueueNoteTemplate } from 'src/types'
 
+import { logDueStats } from '../helpers/statsLogger'
 import type { QueueNote } from '../models/QueueNote'
-import { StatsManager } from './StatsManager'
 import { StreakManager } from './StreakManager'
 
 // knows the notes
@@ -72,7 +72,7 @@ export class NoteShuffler {
             }
         }
         this.notes = notes
-        StatsManager.logDueStats(this.notes)
+        logDueStats(this.notes)
 
         this.notesCurrentlyLoading = false
     }
